@@ -5,19 +5,11 @@ import retrofit2.http.GET;
 import retrofit2.http.Query;
 
 public interface WeatherApi {
-
     @GET("v1/forecast")
     Call<WeatherResponse> getHourlyWeather(
             @Query("latitude") double lat,
             @Query("longitude") double lon,
             @Query("hourly") String hourly,
             @Query("timezone") String timezone
-    );
-
-    @GET("v1/forecast")
-    Call<WeatherResponse> getCurrentWeather(
-            @Query("latitude") double lat,
-            @Query("longitude") double lon,
-            @Query("current") String current
     );
 }

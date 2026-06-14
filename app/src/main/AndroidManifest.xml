@@ -14,13 +14,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WeatherTracking">
         <activity
-            android:name=".WeatherRecommendations"
-            android:exported="false" />
-        <activity
             android:name=".InfoAboutTheWeather"
             android:exported="false" />
         <activity
             android:name=".MainActivity"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -9,5 +9,6 @@ public class GeocodingResponse {
         public String name;
         public double latitude;
         public double longitude;
+        public String country;
     }
 }

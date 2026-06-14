@@ -21,6 +21,8 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.TimeZone;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -46,6 +48,7 @@ public class InfoAboutTheWeather extends AppCompatActivity {
     LineChart lineChart;
 
     ArrayList<Entry> entries = new ArrayList<>();
+    Intent intentBack;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,48 +57,19 @@ public class InfoAboutTheWeather extends AppCompatActivity {
         setContentView(R.layout.activity_info_about_the_weather);
 
         initViews();
+        intentBack = new Intent(InfoAboutTheWeather.this, MainActivity.class);
 
         buttonClose.setOnClickListener(v ->{
-            Intent intent = new Intent(InfoAboutTheWeather.this, MainActivity.class);
-            startActivity(intent);
+            startActivity(intentBack);
         });
-
         Intent intent = getIntent();
         city = (City) intent.getSerializableExtra("city");
         CityTitle.setText(city.getTitle());
 
-        currentWeather();
+        hourlyWeather(city.lat, city.lon);
     }
 
-    void currentWeather(){
-        Retrofit geoRetrofit = new Retrofit.Builder()
-                .baseUrl("https://geocoding-api.open-meteo.com/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
 
-        GeocodingApi geoApi = geoRetrofit.create(GeocodingApi.class);
-
-        geoApi.getCoordinates(city.getTitle(), 1, "en").enqueue(new Callback<GeocodingResponse>() {
-            @Override
-            public void onResponse(Call<GeocodingResponse> call, Response<GeocodingResponse> response) {
-                if (response.isSuccessful() && response.body() != null
-                        && response.body().results != null) {
-
-                    GeocodingResponse.GeoResult result = response.body().results.get(0);
-                    double lat = result.latitude;
-                    double lon = result.longitude;
-
-                    hourlyWeather(lat, lon);
-                }
-            }
-
-            @Override
-            public void onFailure(Call<GeocodingResponse> call, Throwable t) {
-                t.printStackTrace();
-                Log.d("MyTag", t.getMessage() + "ошибка2222222222222!!!!");
-            }
-        });
-    }
 
     void hourlyWeather(double lat, double lon){
         Retrofit retrofit = new Retrofit.Builder()
@@ -109,7 +83,7 @@ public class InfoAboutTheWeather extends AppCompatActivity {
                 api.getHourlyWeather(
                         lat,
                         lon,
-                        "temperature_2m,relativehumidity_2m,pressure_msl,windspeed_10m,weathercode",
+                        "temperature_2m,relative_humidity_2m,pressure_msl,wind_speed_10m,weather_code",
                         "auto"
                 );
 
@@ -117,9 +91,7 @@ public class InfoAboutTheWeather extends AppCompatActivity {
             @Override
             public void onResponse(Call<WeatherResponse> call,
                                    Response<WeatherResponse> response) {
-
                 if (response.isSuccessful() && response.body() != null) {
-
                     WeatherResponse weather = response.body();
 
                     entries.clear();
@@ -129,12 +101,20 @@ public class InfoAboutTheWeather extends AppCompatActivity {
                         entries.add(new Entry(i, temp));
                     }
 
+                    TimeZone tz = TimeZone.getTimeZone(weather.timezone);
+                    Calendar calendar = Calendar.getInstance(tz);
+                    int currentHour = calendar.get(Calendar.HOUR_OF_DAY);
+
                     setCurrentHourCity(weather);
-                    float temp = weather.hourly.temperature_2m.get(0);
-                    int weathercode1 = weather.hourly.weathercode.get(0);
-                    float humidity1  = weather.hourly.relativehumidity_2m.get(0);
-                    float pressure1  = weather.hourly.pressure_msl.get(0);
-                    float wind1      = weather.hourly.windspeed_10m.get(0);
+                    float temp = weather.hourly.temperature_2m.get(currentHour);
+
+                    int weathercode1 = weather.hourly.weather_code.get(currentHour);
+                    city.setWeatherIndicator(getWeatherDescription(weathercode1));
+                    intentBack.putExtra("getCity", city);
+
+                    float humidity1  = weather.hourly.relative_humidity_2m.get(currentHour);
+                    float pressure1  = weather.hourly.pressure_msl.get(currentHour);
+                    float wind1      = weather.hourly.wind_speed_10m.get(currentHour);
 
                     runOnUiThread(() -> {
                         Temperature_now.setText(temp + "°C");
