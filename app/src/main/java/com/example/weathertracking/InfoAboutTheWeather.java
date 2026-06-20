@@ -5,7 +5,9 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.github.mikephil.charting.components.Description;
@@ -20,8 +22,11 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
 import java.util.TimeZone;
 
 import retrofit2.Call;
@@ -50,13 +55,27 @@ public class InfoAboutTheWeather extends AppCompatActivity {
     ArrayList<Entry> entries = new ArrayList<>();
     Intent intentBack;
 
+    private RainView rainView;
+    private ImageView weatherBackground;
+
+    static final boolean DEBUG_FORCE_RAIN = true;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_info_about_the_weather);
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
 
         initViews();
+        rainView = findViewById(R.id.rainView);
+        //weatherBackground = findViewById(R.id.weatherBackground);
+
         intentBack = new Intent(InfoAboutTheWeather.this, MainActivity.class);
 
         buttonClose.setOnClickListener(v ->{
@@ -69,7 +88,53 @@ public class InfoAboutTheWeather extends AppCompatActivity {
         hourlyWeather(city.lat, city.lon);
     }
 
+    // ------------------------------------------
 
+    private void applyWeather(String condition) {
+        switch (condition) {
+            case "🌧️ Rain":
+            case "🌦️ Drizzle":
+            case "⛈️ Thunderstorm":
+                //weatherBackground.setImageResource(R.drawable.bg_rain);
+                rainView.setVisibility(View.VISIBLE);
+                rainView.startRain();
+                break;
+
+            case "Clear":
+                //weatherBackground.setImageResource(R.drawable.bg_sunny);
+                rainView.setVisibility(View.GONE);
+                rainView.stopRain();
+                break;
+
+            case "Clouds":
+                //weatherBackground.setImageResource(R.drawable.bg_cloudy);
+                rainView.setVisibility(View.GONE);
+                rainView.stopRain();
+                break;
+
+            default:
+                rainView.setVisibility(View.GONE);
+                rainView.stopRain();
+                break;
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        rainView.stopRain(); // останавливаем когда приложение свёрнуто
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // если погода была дождливой — возобновляем
+        if (rainView.getVisibility() == View.VISIBLE) {
+            rainView.startRain();
+        }
+    }
+
+    // ------------------------------------------
 
     void hourlyWeather(double lat, double lon){
         Retrofit retrofit = new Retrofit.Builder()
@@ -122,8 +187,8 @@ public class InfoAboutTheWeather extends AppCompatActivity {
                         humidity.setText("humidity: " + humidity1 + "%");
                         pressure.setText("pressure: " + pressure1 + " hPa");
                         windSpeed.setText("wind speed: " + wind1 + "km/h");
+                        applyWeather(DEBUG_FORCE_RAIN ? "🌧️ Rain" : getWeatherDescription(weathercode1));
                     });
-
                     Weather_Chart();
                 }
             }
@@ -148,11 +213,11 @@ public class InfoAboutTheWeather extends AppCompatActivity {
     }
 
     void setCurrentHourCity(WeatherResponse weather) {
-        java.util.TimeZone tz = java.util.TimeZone.getTimeZone(weather.timezone);
-        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault());
+        TimeZone tz = java.util.TimeZone.getTimeZone(weather.timezone);
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
         sdf.setTimeZone(tz);
 
-        String currentHour = sdf.format(new java.util.Date());
+        String currentHour = sdf.format(new Date());
 
         runOnUiThread(() -> Time.setText(currentHour));
     }
